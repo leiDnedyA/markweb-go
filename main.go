@@ -4,11 +4,10 @@ import (
   "fmt"
   "log"
   "net/http"
+  // "io/ioutil"
 )
 
-func reqHandler(w http.ResponseWriter, r *http.Request) {
-  path := r.URL.Path
-  if (len(path) <= 1) {
+func homepageHandler(w http.ResponseWriter, r *http.Request) {
     r.Header.Set("Content-Type", "text/html")
     fmt.Fprintf(w, `
     <!DOCTYPE html>
@@ -26,10 +25,23 @@ func reqHandler(w http.ResponseWriter, r *http.Request) {
       }
     </script>
     `)
-    return
-  }
+}
+
+func readerHandler(w http.ResponseWriter, r *http.Request) {
+  path := r.URL.Path
   targetUrl := path[1:]
   fmt.Fprintf(w, "Hello, world!\n" + targetUrl)
+}
+
+func reqHandler(w http.ResponseWriter, r *http.Request) {
+  path := r.URL.Path
+
+  if (len(path) <= 1) {
+    homepageHandler(w, r)
+    return
+  }
+  readerHandler(w, r)
+  return
 }
 
 func main() {
