@@ -2,6 +2,7 @@ package main
 
 import (
   "bytes"
+  "strings"
   "fmt"
   "log"
   "net/http"
@@ -18,8 +19,12 @@ type ReaderPayload struct {
   Prompt string `json:"prompt"`
 }
 
+type ReaderResponse struct {
+  Response string `json:"response"`
+}
+
 func hasScheme(u string) bool {
-	return urlHasPrefix(u, "http://") || urlHasPrefix(u, "https://")
+	return urlHasPrefix(u, "http:/") || urlHasPrefix(u, "https:/")
 }
 
 func urlHasPrefix(u, prefix string) bool {
@@ -29,6 +34,9 @@ func urlHasPrefix(u, prefix string) bool {
 func getPageHTML(rawURL string) (string, error) {
   if !hasScheme(rawURL) {
     rawURL = "http://" + rawURL
+  } else {
+    // The scheme gets converted from :// to :/ up when the request is made
+    rawURL = strings.Replace(rawURL, ":/", "://", 1)
   }
 
   u, err := url.Parse(rawURL)
@@ -81,7 +89,15 @@ func htmlToMD(html string) (string, error) {
     return "", err
   }
 
-  return string(bodyBytes), nil
+  bodyJSON := string(bodyBytes)
+
+  var body ReaderResponse
+
+  json.Unmarshal([]byte(bodyJSON), &body)
+
+  markdown := body.Response
+
+  return markdown, nil
 }
 
 func homepageHandler(w http.ResponseWriter, r *http.Request) {
@@ -107,11 +123,13 @@ func homepageHandler(w http.ResponseWriter, r *http.Request) {
 func readerHandler(w http.ResponseWriter, r *http.Request) {
   path := r.URL.Path
   targetUrl := path[1:]
+  log.Println("Getting HTML for " + targetUrl)
   htmlContent, err := getPageHTML(targetUrl)
   if err != nil {
     fmt.Println(err)
     return
   }
+  log.Println("Converting page " + taragetUrl + " to markdown")
   mdContent, err := htmlToMD(htmlContent)
   if err != nil {
     fmt.Println(err)
