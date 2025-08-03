@@ -2,6 +2,7 @@ package main
 
 import (
   "leidnedya/markweb/httputil"
+  "leidnedya/markweb/mdutil"
   "fmt"
   "log"
   "net/http"
@@ -31,19 +32,30 @@ func homepageHandler(w http.ResponseWriter, r *http.Request) {
 func readerHandler(w http.ResponseWriter, r *http.Request) {
   path := r.URL.Path
   targetUrl := path[1:]
+
   log.Println("Getting HTML for " + targetUrl)
   htmlContent, err := httputil.GetPageHTML(targetUrl)
   if err != nil {
     fmt.Println(err)
     return
   }
+
   log.Println("Converting page " + targetUrl + " to markdown")
   mdContent, err := httputil.HTMLToMD(htmlContent)
   if err != nil {
     fmt.Println(err)
     return
   }
-  fmt.Fprintf(w, mdContent)
+
+  log.Println("Parsing markdown to simplified HTML")
+  cleanHTML, err := mdutil.MarkdownToHTML(mdContent)
+  if err != nil {
+    fmt.Println(err)
+    return
+  }
+
+  r.Header.Add("Content-Type", "text/html")
+  fmt.Fprintf(w, cleanHTML)
 }
 
 func reqHandler(w http.ResponseWriter, r *http.Request) {
