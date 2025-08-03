@@ -36,25 +36,25 @@ func readerHandler(w http.ResponseWriter, r *http.Request) {
   log.Println("Getting HTML for " + targetUrl)
   htmlContent, err := httputil.GetPageHTML(targetUrl)
   if err != nil {
-    fmt.Println(err)
+    fmt.Println("Error fetching HTML.")
     return
   }
 
   log.Println("Converting page " + targetUrl + " to markdown")
   mdContent, err := httputil.HTMLToMD(htmlContent)
   if err != nil {
-    fmt.Println(err)
+    fmt.Println("Error converting page to markdown.")
     return
   }
 
   log.Println("Parsing markdown to simplified HTML")
   cleanHTML, err := mdutil.MarkdownToHTML(mdContent)
   if err != nil {
-    fmt.Println(err)
+    fmt.Println("Error parsing markdown to HTML")
     return
   }
 
-  r.Header.Add("Content-Type", "text/html")
+  r.Header.Add("Content-Type", "text/htm")
   fmt.Fprintf(w, cleanHTML)
 }
 
