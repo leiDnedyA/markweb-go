@@ -1,11 +1,88 @@
 package main
 
 import (
+  "bytes"
   "fmt"
   "log"
   "net/http"
-  // "io/ioutil"
+  "io"
+  "net/url"
+  "encoding/json"
 )
+
+const READER_LM_URL = "http://localhost:11434/api/generate"
+
+type ReaderPayload struct {
+  Model string `json:"model"`
+  Stream bool `json:"stream"`
+  Prompt string `json:"prompt"`
+}
+
+func hasScheme(u string) bool {
+	return urlHasPrefix(u, "http://") || urlHasPrefix(u, "https://")
+}
+
+func urlHasPrefix(u, prefix string) bool {
+	return len(u) >= len(prefix) && u[:len(prefix)] == prefix
+}
+
+func getPageHTML(rawURL string) (string, error) {
+  if !hasScheme(rawURL) {
+    rawURL = "http://" + rawURL
+  }
+
+  u, err := url.Parse(rawURL)
+  if err != nil {
+    log.Println("Invalid URL: " + rawURL)
+    return "", err
+  }
+
+  resp, err := http.Get(u.String())
+  if err != nil {
+    log.Println("Failed to request page: " + u.String())
+    return "", err
+  }
+
+  defer resp.Body.Close()
+
+  bodyBytes, err := io.ReadAll(resp.Body)
+  if err != nil {
+    log.Println("Failed to parse response body for page: " + u.String())
+    return "", err
+  }
+
+  bodyString := string(bodyBytes)
+  return bodyString, nil
+}
+
+func htmlToMD(html string) (string, error) {
+  payload := ReaderPayload{
+    Model: "reader-lm:1.5b",
+    Stream: false,
+    Prompt: html,
+  }
+
+  jsonData, err := json.Marshal(payload)
+  if err != nil {
+    fmt.Println("Unable to json-stringify reader payload.")
+    panic(err)
+  }
+
+  resp, err := http.Post(READER_LM_URL, "application/json", bytes.NewBuffer(jsonData))
+  if err != nil {
+    log.Println("Request to reader API failed.")
+    return "", err
+  }
+  defer resp.Body.Close()
+
+  bodyBytes, err := io.ReadAll(resp.Body)
+  if err != nil {
+    log.Println("Unable to parse response from reader API")
+    return "", err
+  }
+
+  return string(bodyBytes), nil
+}
 
 func homepageHandler(w http.ResponseWriter, r *http.Request) {
     r.Header.Set("Content-Type", "text/html")
@@ -30,7 +107,17 @@ func homepageHandler(w http.ResponseWriter, r *http.Request) {
 func readerHandler(w http.ResponseWriter, r *http.Request) {
   path := r.URL.Path
   targetUrl := path[1:]
-  fmt.Fprintf(w, "Hello, world!\n" + targetUrl)
+  htmlContent, err := getPageHTML(targetUrl)
+  if err != nil {
+    fmt.Println(err)
+    return
+  }
+  mdContent, err := htmlToMD(htmlContent)
+  if err != nil {
+    fmt.Println(err)
+    return
+  }
+  fmt.Fprintf(w, mdContent)
 }
 
 func reqHandler(w http.ResponseWriter, r *http.Request) {
