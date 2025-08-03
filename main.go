@@ -48,11 +48,15 @@ func readerHandler(w http.ResponseWriter, r *http.Request) {
   }
 
   log.Println("Parsing markdown to simplified HTML")
-  cleanHTML, err := mdutil.MarkdownToHTML(mdContent)
+  htmlBody, err := mdutil.MarkdownToHTML(mdContent)
   if err != nil {
     fmt.Println("Error parsing markdown to HTML")
     return
   }
+
+  cleanHTML := mdutil.TemplateHTMLBody(htmlBody)
+
+  fmt.Println(cleanHTML)
 
   r.Header.Add("Content-Type", "text/htm")
   fmt.Fprintf(w, cleanHTML)
