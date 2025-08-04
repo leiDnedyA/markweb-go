@@ -20,9 +20,23 @@ type ApiRespScanner struct {
   token string
 }
 
+const PREFIX_STRING = "```markdown"
+
 func (ars *ApiRespScanner) NextToken() (string, error) {
   if ars.internalScanner == nil {
     ars.internalScanner = bufio.NewScanner(ars.resp.Body)
+    prefixBuffer := ""
+    for len(prefixBuffer) < len(PREFIX_STRING) && ars.internalScanner.Scan() {
+
+      line := ars.internalScanner.Text()
+      var partialResponse ReaderResponse
+      json.Unmarshal([]byte(line), &partialResponse)
+      text := partialResponse.Response
+
+      prefixBuffer += text
+    }
+    ars.data = prefixBuffer[len(PREFIX_STRING):]
+    ars.tokens = []rune(ars.data)
   }
 
   if ars.internalScanner.Scan() {
@@ -81,6 +95,21 @@ func renderResponseStream(w http.ResponseWriter, apiResp *http.Response, flusher
       }
       fmt.Fprintf(w, ch)
       flusher.Flush()
+    } else if ch == "`" { // ignore the last ``` at the end of the stream
+      
+      ch1, err := scanner.NextToken()
+      ch2, err := scanner.NextToken()
+      ch3, err := scanner.NextToken()
+      ch4, err := scanner.NextToken()
+
+      if err == io.EOF {
+        flusher.Flush()
+        return
+      }
+
+      fmt.Fprintf(w, ch + ch1 + ch2 + ch3 + ch4)
+      flusher.Flush()
+
     } else if isNewline && (ch == "=" || ch == "-") {
       for ch == "=" || ch == "-" && err != nil {
         ch, err = scanner.NextToken()
@@ -216,7 +245,7 @@ func renderResponseStream(w http.ResponseWriter, apiResp *http.Response, flusher
 
 func StreamReaderResponse(html string, w http.ResponseWriter) {
   payload := ReaderPayload{
-    Model: "reader-lm:0.5b",
+    Model: "milkey/reader-lm-v2",
     Stream: true,
     Prompt: html,
   }
