@@ -2,7 +2,7 @@ package main
 
 import (
   "leidnedya/markweb/httputil"
-  "leidnedya/markweb/mdutil"
+  // "leidnedya/markweb/mdutil"
   "fmt"
   "log"
   "net/http"
@@ -36,30 +36,28 @@ func readerHandler(w http.ResponseWriter, r *http.Request) {
   log.Println("Getting HTML for " + targetUrl)
   htmlContent, err := httputil.GetPageHTML(targetUrl)
   if err != nil {
-    fmt.Println("Error fetching HTML.")
+    fmt.Println(err)
     return
   }
 
-  log.Println("Converting page " + targetUrl + " to markdown")
-  mdContent, err := httputil.HTMLToMD(htmlContent)
-  if err != nil {
-    fmt.Println("Error converting page to markdown.")
-    return
-  }
+  // log.Println("Converting page " + targetUrl + " to markdown")
+  // mdContent, err := httputil.HTMLToMD(htmlContent)
+  // if err != nil {
+  //   fmt.Println(err)
+  //   return
+  // }
 
   log.Println("Parsing markdown to simplified HTML")
-  htmlBody, err := mdutil.MarkdownToHTML(mdContent)
-  if err != nil {
-    fmt.Println("Error parsing markdown to HTML")
-    return
-  }
+  httputil.StreamReaderResponse(htmlContent, w)
 
-  cleanHTML := mdutil.TemplateHTMLBody(htmlBody)
-
-  fmt.Println(cleanHTML)
-
-  r.Header.Add("Content-Type", "text/htm")
-  fmt.Fprintf(w, cleanHTML)
+  // cleanHTML, err := mdutil.MarkdownToHTML(mdContent)
+  // if err != nil {
+  //   fmt.Println(err)
+  //   return
+  // }
+  //
+  // r.Header.Add("Content-Type", "text/htm")
+  // fmt.Fprintf(w, cleanHTML)
 }
 
 func reqHandler(w http.ResponseWriter, r *http.Request) {
