@@ -22,6 +22,13 @@ type ApiRespScanner struct {
 
 const PREFIX_STRING = "```markdown"
 
+func (ars *ApiRespScanner) Peek() string {
+  if ars.i >= len(ars.tokens) {
+    return ""
+  }
+  return string(ars.tokens[ars.i])
+}
+
 func (ars *ApiRespScanner) NextToken() (string, error) {
   if ars.internalScanner == nil {
     ars.internalScanner = bufio.NewScanner(ars.resp.Body)
@@ -116,7 +123,25 @@ func renderResponseStream(w http.ResponseWriter, apiResp *http.Response, flusher
       }
       fmt.Fprintf(w, "\n\t\t<br>\n")
       flusher.Flush()
-    } else if ch == "[" {
+    } else if ch == "*" || ch == "_" { // bold & italic
+      nextCh := scanner.Peek()
+      tag := ""
+      log.Println("Next char " + nextCh)
+      if ch == nextCh {
+        tag = "strong"
+        ch, err = scanner.NextToken()
+      } else {
+        tag = "em"
+      }
+      if len(tagStack) > 0 && tagStack[len(tagStack) - 1] == tag {
+        fmt.Fprintf(w, "</%s>", tag)
+        tagStack = tagStack[0:len(tagStack) - 1]
+      } else {
+        fmt.Fprintf(w, "<%s>", tag)
+        tagStack = append(tagStack, tag)
+      }
+      flusher.Flush()
+    } else if ch == "[" { // link
       if len(tagStack) == 0 {
         // If there's no current tag, put this in a p tag
         tagStack = append(tagStack, "p")
@@ -172,7 +197,7 @@ func renderResponseStream(w http.ResponseWriter, apiResp *http.Response, flusher
       // happy path
       fmt.Fprintf(w, strings.ReplaceAll("<a href=\"" + href + "\">" + labelText + "</a>", "%", "%%"))
       flusher.Flush()
-    } else if ch == "!" {
+    } else if ch == "!" { // image
       ch, err = scanner.NextToken()
 
       // ignore if not followed by angle bracket
