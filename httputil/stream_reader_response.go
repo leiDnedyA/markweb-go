@@ -16,6 +16,7 @@ type ApiRespScanner struct {
   i int
   resp *http.Response
   internalScanner *bufio.Scanner
+  tokens []rune
   token string
 }
 
@@ -30,15 +31,16 @@ func (ars *ApiRespScanner) NextToken() (string, error) {
     json.Unmarshal([]byte(line), &partialResponse)
     text := partialResponse.Response
     ars.data += text
+    ars.tokens = []rune(ars.data)
   }
 
   ars.i++
-  if (ars.i >= len(ars.data)) {
+  if (ars.i >= len(ars.tokens)) {
     log.Println(ars.data)
     return "", io.EOF
   }
 
-  ars.token = string(ars.data[ars.i])
+  ars.token = string(ars.tokens[ars.i])
   return ars.token, nil
 }
 
