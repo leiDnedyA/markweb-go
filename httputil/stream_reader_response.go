@@ -34,13 +34,13 @@ func (ars *ApiRespScanner) NextToken() (string, error) {
     ars.tokens = []rune(ars.data)
   }
 
-  ars.i++
   if (ars.i >= len(ars.tokens)) {
     log.Println(ars.data)
     return "", io.EOF
   }
-
   ars.token = string(ars.tokens[ars.i])
+
+  ars.i++
   return ars.token, nil
 }
 
